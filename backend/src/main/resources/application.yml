@@ -6,21 +6,26 @@ spring:
     name: smart-community-care
   
   datasource:
-    url: jdbc:mysql://localhost:3306/smart_community?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+    url: jdbc:mysql://localhost:3306/smart_community?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&autoReconnect=true&useServerPrepStmts=false&rewriteBatchedStatements=true
     username: root
     password: 123456
     driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+      idle-timeout: 300000
+      connection-timeout: 20000
+      max-lifetime: 1200000
+      connection-test-query: SELECT 1
   
-  data:
-    redis:
-      host: localhost
-      port: 6379
-      timeout: 6000ms
-      lettuce:
-        shutdown-timeout: 100ms
-      client-type: lettuce
-      connect-timeout: 1000ms
-      enable: false
+  redis:
+    host: localhost
+    port: 6379
+    timeout: 6000ms
+    lettuce:
+      shutdown-timeout: 100ms
+    client-type: lettuce
+    connect-timeout: 1000ms
   
   servlet:
     multipart:
@@ -49,3 +54,10 @@ mqtt:
   username: admin
   password: password
   topic-prefix: smart/community/
+
+aliyun:
+  oss:
+    endpoint: ${OSS_ENDPOINT:oss-cn-beijing.aliyuncs.com}
+    access-key-id: ${OSS_ACCESS_KEY_ID:}
+    access-key-secret: ${OSS_ACCESS_KEY_SECRET:}
+    bucket-name: ${OSS_BUCKET_NAME:shixun666}

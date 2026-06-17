@@ -34,6 +34,7 @@
         <template #default="scope">
           <div class="action-btn">
             <el-button type="primary" size="small" @click="editUser(scope.row)">编辑</el-button>
+            <el-button type="warning" size="small" @click="openRechargeModal(scope.row)">充值</el-button>
             <el-button type="danger" size="small" @click="deleteUser(scope.row.id)">删除</el-button>
           </div>
         </template>
@@ -41,13 +42,13 @@
       </el-table>
     </div>
     
-    <el-dialog class="custom-modal" title="添加用户" v-model="showAddModal">
+    <el-dialog class="custom-modal" :title="isEditMode ? '编辑用户' : '添加用户'" v-model="showAddModal" @close="handleModalClose">
       <div class="modal-body">
         <el-form :model="form" label-width="100px">
           <el-form-item label="用户名" class="form-item">
             <el-input v-model="form.username" placeholder="请输入用户名" />
           </el-form-item>
-          <el-form-item label="密码" class="form-item">
+          <el-form-item v-if="!isEditMode" label="密码" class="form-item">
             <el-input type="password" v-model="form.password" placeholder="请输入密码" />
           </el-form-item>
           <el-form-item label="姓名" class="form-item">
@@ -77,7 +78,32 @@
       <template #footer>
         <div class="modal-footer">
           <el-button @click="showAddModal = false">取消</el-button>
-          <el-button type="primary" @click="addUser">确定</el-button>
+          <el-button type="primary" @click="saveUser">{{ isEditMode ? '保存' : '确定' }}</el-button>
+        </div>
+      </template>
+    </el-dialog>
+
+    <el-dialog class="custom-modal" title="用户充值" v-model="showRechargeModal">
+      <div class="modal-body">
+        <el-form :model="rechargeForm" label-width="100px">
+          <el-form-item label="用户姓名" class="form-item">
+            <el-input :value="rechargeForm.userName" disabled />
+          </el-form-item>
+          <el-form-item label="充值金额" class="form-item">
+            <el-input type="number" v-model="rechargeForm.amount" placeholder="请输入充值金额" />
+          </el-form-item>
+          <div class="quick-amounts">
+            <button type="button" v-for="amount in [10, 50, 100, 200, 500]" :key="amount" 
+                    class="quick-btn" @click="rechargeForm.amount = amount">
+              ¥{{ amount }}
+            </button>
+          </div>
+        </el-form>
+      </div>
+      <template #footer>
+        <div class="modal-footer">
+          <el-button @click="closeRechargeModal">取消</el-button>
+          <el-button type="primary" @click="handleRecharge">确认充值</el-button>
         </div>
       </template>
     </el-dialog>
@@ -86,12 +112,15 @@
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
-import { userAPI, authAPI } from '../../api'
+import { userAPI, authAPI, walletAPI } from '../../api'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
 const userList = ref([])
 const showAddModal = ref(false)
+const showRechargeModal = ref(false)
+const isEditMode = ref(false)
 const form = reactive({
+  id: '',
   username: '',
   password: '',
   name: '',
@@ -99,6 +128,12 @@ const form = reactive({
   age: '',
   gender: 'male',
   role: 2
+})
+
+const rechargeForm = reactive({
+  userId: '',
+  userName: '',
+  amount: ''
 })
 
 const loadUsers = async () => {
@@ -112,19 +147,29 @@ const loadUsers = async () => {
   }
 }
 
+const resetForm = () => {
+  form.id = ''
+  form.username = ''
+  form.password = ''
+  form.name = ''
+  form.phone = ''
+  form.age = ''
+  form.gender = 'male'
+  form.role = 2
+}
+
 const addUser = async () => {
+  if (!form.username || !form.password || !form.name) {
+    ElMessage.error('请填写必填字段')
+    return
+  }
+
   try {
     const response = await authAPI.register(form)
     if (response.code === 200) {
       ElMessage.success('添加成功')
       showAddModal.value = false
-      form.username = ''
-      form.password = ''
-      form.name = ''
-      form.phone = ''
-      form.age = ''
-      form.gender = 'male'
-      form.role = 2
+      resetForm()
       loadUsers()
     }
   } catch (error) {
@@ -133,8 +178,47 @@ const addUser = async () => {
 }
 
 const editUser = (user) => {
+  isEditMode.value = true
   Object.assign(form, user)
   showAddModal.value = true
+}
+
+const saveUser = async () => {
+  if (!form.username || !form.name) {
+    ElMessage.error('请填写必填字段')
+    return
+  }
+
+  try {
+    if (isEditMode.value) {
+      const response = await userAPI.update(form.id, {
+        username: form.username,
+        name: form.name,
+        phone: form.phone,
+        age: form.age,
+        gender: form.gender,
+        role: form.role
+      })
+      if (response.code === 200) {
+        ElMessage.success('修改成功')
+      }
+    } else {
+      await addUser()
+      return
+    }
+    
+    showAddModal.value = false
+    isEditMode.value = false
+    resetForm()
+    loadUsers()
+  } catch (error) {
+    ElMessage.error(isEditMode.value ? '修改失败' : '添加失败')
+  }
+}
+
+const handleModalClose = () => {
+  isEditMode.value = false
+  resetForm()
 }
 
 const deleteUser = async (userId) => {
@@ -150,6 +234,34 @@ const deleteUser = async (userId) => {
     }
   } catch (error) {
     ElMessage.error('删除失败')
+  }
+}
+
+const openRechargeModal = (user) => {
+  rechargeForm.userId = user.id
+  rechargeForm.userName = user.name
+  rechargeForm.amount = ''
+  showRechargeModal.value = true
+}
+
+const closeRechargeModal = () => {
+  showRechargeModal.value = false
+}
+
+const handleRecharge = async () => {
+  if (!rechargeForm.amount || parseFloat(rechargeForm.amount) <= 0) {
+    ElMessage.error('请输入有效的充值金额')
+    return
+  }
+  
+  try {
+    const response = await walletAPI.recharge(rechargeForm.userId, parseFloat(rechargeForm.amount))
+    if (response.code === 200) {
+      ElMessage.success('充值成功')
+      closeRechargeModal()
+    }
+  } catch (error) {
+    ElMessage.error('充值失败')
   }
 }
 
@@ -225,6 +337,7 @@ onMounted(() => {
   border-radius: 12px;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
   overflow: hidden;
+  overflow-x: auto;
 }
 
 .user-table .el-table {
@@ -296,32 +409,74 @@ onMounted(() => {
 .action-btn {
   display: flex;
   gap: 8px;
+  flex-wrap: wrap;
 }
 
 .action-btn .el-button {
-  padding: 6px 12px;
-  font-size: 12px;
-  border-radius: 6px;
+  padding: 6px 12px !important;
+  font-size: 12px !important;
+  border-radius: 6px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-width: 60px !important;
 }
 
 .action-btn .el-button--primary {
-  background: #3b82f6;
-  border-color: #3b82f6;
+  background: #3b82f6 !important;
+  border-color: #3b82f6 !important;
+  color: #fff !important;
 }
 
 .action-btn .el-button--primary:hover {
-  background: #2563eb;
-  border-color: #2563eb;
+  background: #2563eb !important;
+  border-color: #2563eb !important;
+}
+
+.action-btn .el-button--warning {
+  background: #f59e0b !important;
+  border-color: #f59e0b !important;
+  color: #fff !important;
+}
+
+.action-btn .el-button--warning:hover {
+  background: #d97706 !important;
+  border-color: #d97706 !important;
 }
 
 .action-btn .el-button--danger {
-  background: #ef4444;
-  border-color: #ef4444;
+  background: #ef4444 !important;
+  border-color: #ef4444 !important;
+  color: #fff !important;
 }
 
 .action-btn .el-button--danger:hover {
-  background: #dc2626;
-  border-color: #dc2626;
+  background: #dc2626 !important;
+  border-color: #dc2626 !important;
+}
+
+.quick-amounts {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.quick-btn {
+  flex: 1;
+  padding: 10px;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  background: white;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.quick-btn:hover {
+  border-color: #667eea;
+  color: #667eea;
 }
 
 .modal-header {

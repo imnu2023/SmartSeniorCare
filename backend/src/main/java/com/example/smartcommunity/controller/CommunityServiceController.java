@@ -51,4 +51,28 @@ public class CommunityServiceController {
         CommunityService service = communityServiceInterface.getServiceById(id);
         return ApiResponse.success(service);
     }
+    
+    @DeleteMapping("/clean")
+    public ApiResponse<Void> cleanDuplicateServices() {
+        communityServiceInterface.cleanDuplicateServices();
+        return ApiResponse.success("清理成功");
+    }
+    
+    @PostMapping("/fix-garbled")
+    public ApiResponse<Void> fixGarbledServices() {
+        communityServiceInterface.fixGarbledServices();
+        return ApiResponse.success("修复成功");
+    }
+    
+    @DeleteMapping("/clean-all")
+    public ApiResponse<Void> cleanAllGarbledData() {
+        communityServiceInterface.cleanAllGarbledData();
+        return ApiResponse.success("清理成功");
+    }
+    
+    @PostMapping("/fix-all-garbled")
+    public ApiResponse<Void> fixAllGarbledData() {
+        communityServiceInterface.fixAllGarbledData();
+        return ApiResponse.success("修复成功");
+    }
 }

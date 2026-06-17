@@ -84,4 +84,21 @@ public class ServiceOrderServiceImpl implements ServiceOrderService {
     public List<ServiceOrder> getAllOrders() {
         return serviceOrderMapper.selectList(null);
     }
+    
+    @Override
+    public void fixAddressData() {
+        List<ServiceOrder> orders = serviceOrderMapper.selectList(null);
+        for (ServiceOrder order : orders) {
+            String address = order.getAddress();
+            if (address != null) {
+                if (address.contains("Community") || address.contains("Building")) {
+                    order.setAddress("幸福社区1号楼101室");
+                } else if (address.contains("?") || address.equals("1")) {
+                    order.setAddress("幸福社区");
+                }
+                order.setUpdatedAt(LocalDateTime.now());
+                serviceOrderMapper.updateById(order);
+            }
+        }
+    }
 }

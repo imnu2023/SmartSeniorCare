@@ -1,6 +1,6 @@
 import axios from 'axios'
 
-const instance = axios.create({
+export const instance = axios.create({
   baseURL: '/api',
   timeout: 10000
 })
@@ -26,6 +26,9 @@ instance.interceptors.response.use(
     if (error.response && error.response.status === 401) {
       localStorage.removeItem('token')
       window.location.href = '/login'
+    }
+    if (error.response && error.response.data) {
+      return error.response.data
     }
     return Promise.reject(error)
   }
@@ -67,7 +70,7 @@ export const emergencyAPI = {
   getById: (id) => instance.get(`/emergency/${id}`),
   getByUser: (userId) => instance.get(`/emergency/user/${userId}`),
   getUnresolved: () => instance.get('/emergency/unresolved'),
-  respond: (callId, handler) => instance.put(`/emergency/${callId}/respond`, { handler }),
+  respond: (callId, handler) => instance.put(`/emergency/${callId}/respond?handler=${encodeURIComponent(handler)}`),
   resolve: (callId) => instance.put(`/emergency/${callId}/resolve`),
   cancel: (callId) => instance.put(`/emergency/${callId}/cancel`)
 }
@@ -89,4 +92,53 @@ export const orderAPI = {
   getByStatus: (status) => instance.get(`/orders/status/${status}`),
   updateStatus: (orderId, status) => instance.put(`/orders/${orderId}/status`, { status }),
   cancel: (orderId) => instance.put(`/orders/${orderId}/cancel`)
+}
+
+export const messageAPI = {
+  send: (senderId, receiverId, content, type) => instance.post('/messages', { senderId, receiverId, content, type }),
+  getByReceiver: (receiverId) => instance.get(`/messages/receiver/${receiverId}`),
+  getUnread: (receiverId) => instance.get(`/messages/unread/${receiverId}`),
+  countUnread: (receiverId) => instance.get(`/messages/unread/count/${receiverId}`),
+  markAsRead: (messageId) => instance.put(`/messages/${messageId}/read`),
+  markAllAsRead: (receiverId) => instance.put(`/messages/receiver/${receiverId}/read`),
+  getConversation: (userId, otherId) => instance.get(`/messages/conversation?userId=${userId}&otherId=${otherId}`)
+}
+
+export const activityAPI = {
+  getAll: () => instance.get('/activities'),
+  getActive: () => instance.get('/activities/active'),
+  getUpcoming: () => instance.get('/activities/upcoming'),
+  getByType: (type) => instance.get(`/activities/type/${type}`),
+  getByParticipant: (userId) => instance.get(`/activities/participant/${Number(userId)}`),
+  getById: (id) => instance.get(`/activities/${id}`),
+  create: (data) => instance.post('/activities', data),
+  update: (id, data) => instance.put(`/activities/${id}`, data),
+  delete: (id) => instance.delete(`/activities/${id}`),
+  register: (activityId, userId) => instance.post(`/activities/${activityId}/register?userId=${userId}`),
+  unregister: (activityId, userId) => instance.delete(`/activities/${activityId}/register?userId=${userId}`),
+  getParticipants: (activityId) => instance.get(`/activities/${activityId}/participants`),
+  isParticipant: (activityId, userId) => instance.get(`/activities/${activityId}/participant/${userId}`)
+}
+
+export const relationAPI = {
+  bind: (elderId, familyMemberId, relationType) => instance.post('/relations/bind', { elderId, familyMemberId, relationType }),
+  unbind: (id) => instance.delete(`/relations/${id}`),
+  getByElder: (elderId) => instance.get(`/relations/elder/${elderId}`),
+  getByFamilyMember: (familyMemberId) => instance.get(`/relations/family/${familyMemberId}`),
+  exists: (elderId, familyMemberId) => instance.get(`/relations/exists?elderId=${elderId}&familyMemberId=${familyMemberId}`)
+}
+
+export const paymentAPI = {
+  pay: (orderId, payerId) => instance.post('/payments/pay', { orderId, payerId }),
+  familyPay: (orderId, familyId) => instance.post('/payments/family-pay', { orderId, familyId }),
+  confirm: (orderId) => instance.post(`/payments/confirm/${orderId}`),
+  getNeedConfirm: () => instance.get('/payments/orders/need-confirm'),
+  getElderOrders: (familyId) => instance.get(`/payments/elder-orders/${Number(familyId)}`)
+}
+
+export const walletAPI = {
+  getWallet: (userId) => instance.get(`/wallet/${userId}`),
+  getBalance: (userId) => instance.get(`/wallet/balance/${userId}`),
+  recharge: (userId, amount) => instance.post('/wallet/recharge', { userId, amount }),
+  pay: (userId, amount) => instance.post('/wallet/pay', { userId, amount })
 }

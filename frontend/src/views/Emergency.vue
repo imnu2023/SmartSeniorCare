@@ -1,6 +1,12 @@
 <template>
   <div class="emergency-page">
     <div class="hero-section">
+      <button class="back-btn" @click="goBack">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M19 12H5m0 0l7-7m-7 7l7 7"/>
+        </svg>
+        <span>返回</span>
+      </button>
       <div class="hero-content">
         <div class="hero-icon">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -177,8 +183,15 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { emergencyAPI } from '../api'
 import { ElMessage } from 'element-plus'
+
+const router = useRouter()
+
+const goBack = () => {
+  router.push('/dashboard')
+}
 
 const callHistory = ref([])
 const showCallConfirm = ref(false)
@@ -296,9 +309,37 @@ onUnmounted(() => {
 
 .hero-section {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  padding: 60px 24px;
+  padding: 24px;
   text-align: center;
   color: white;
+  position: relative;
+}
+
+.back-btn {
+  position: absolute;
+  left: 24px;
+  top: 24px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.2);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 10px;
+  cursor: pointer;
+  color: white;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.3s;
+}
+
+.back-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.back-btn svg {
+  width: 16px;
+  height: 16px;
 }
 
 .hero-content {

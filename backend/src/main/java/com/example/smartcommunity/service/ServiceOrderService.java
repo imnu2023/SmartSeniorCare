@@ -19,4 +19,6 @@ public interface ServiceOrderService {
     void cancelOrder(Long orderId);
     
     List<ServiceOrder> getAllOrders();
+    
+    void fixAddressData();
 }

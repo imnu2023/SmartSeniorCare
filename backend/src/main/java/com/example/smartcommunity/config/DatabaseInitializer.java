@@ -4,10 +4,13 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
 import javax.sql.DataSource;
+import java.io.BufferedReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-import java.sql.SQLException;
+import java.sql.Statement;
 
 @Component
 public class DatabaseInitializer implements CommandLineRunner {
@@ -19,365 +22,351 @@ public class DatabaseInitializer implements CommandLineRunner {
     }
 
     @Override
-    public void run(String... args) throws Exception {
+    public void run(String... args) {
+        new Thread(() -> {
+            try {
+                Thread.sleep(2000);
+                initializeDataIfNeeded();
+                fixDatabaseData();
+            } catch (Exception e) {
+                System.err.println("Error initializing database: " + e.getMessage());
+                e.printStackTrace();
+            }
+        }).start();
+    }
+
+    private void initializeDataIfNeeded() {
         try (Connection connection = dataSource.getConnection()) {
-            fixForeignKeyConstraints(connection);
+            connection.setAutoCommit(false);
+            
+            try (Statement charsetStmt = connection.createStatement()) {
+                charsetStmt.execute("SET NAMES utf8mb4");
+                charsetStmt.execute("SET CHARACTER SET utf8mb4");
+            }
+            
+            if (!isDataInitialized(connection)) {
+                executeSqlScript("init_mysql.sql", connection);
+            } else {
+                System.out.println("Database already initialized, skipping data insertion");
+            }
+            
+            connection.commit();
+        } catch (Exception e) {
+            System.out.println("Error initializing database: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+    
+    private void fixDatabaseData() {
+        try (Connection connection = dataSource.getConnection()) {
+            connection.setAutoCommit(false);
+            
+            try (Statement charsetStmt = connection.createStatement()) {
+                charsetStmt.execute("SET NAMES utf8mb4");
+                charsetStmt.execute("SET CHARACTER SET utf8mb4");
+            }
+            
             fixDeviceTable(connection);
-            insertTestData(connection);
+            fixEmergencyCallTable(connection);
+            fixServiceOrderTable(connection);
+            fixMessageTable(connection);
+            fillDeviceControlTable(connection);
+            fillWalletTable(connection);
+            
+            connection.commit();
+            System.out.println("Database data fixed successfully");
+        } catch (Exception e) {
+            System.out.println("Error fixing database data: " + e.getMessage());
+            e.printStackTrace();
         }
     }
-
-    private void fixForeignKeyConstraints(Connection connection) throws SQLException {
-        try {
-            PreparedStatement stmt = connection.prepareStatement("ALTER TABLE device DROP FOREIGN KEY device_ibfk_1");
-            stmt.execute();
-            System.out.println("Dropped device_ibfk_1 constraint");
-        } catch (SQLException e) {
-            System.out.println("Cannot drop foreign key device_ibfk_1: " + e.getMessage());
-        }
-
-        try {
-            PreparedStatement stmt = connection.prepareStatement("ALTER TABLE device ADD CONSTRAINT device_user_fk FOREIGN KEY (user_id) REFERENCES sys_user(id)");
-            stmt.execute();
-            System.out.println("Added device_user_fk constraint referencing sys_user");
-        } catch (SQLException e) {
-            System.out.println("Cannot add foreign key device_user_fk: " + e.getMessage());
-        }
-
-        try {
-            PreparedStatement stmt = connection.prepareStatement("ALTER TABLE health_data DROP FOREIGN KEY health_data_ibfk_1");
-            stmt.execute();
-            System.out.println("Dropped health_data_ibfk_1 constraint");
-        } catch (SQLException e) {
-            System.out.println("Cannot drop foreign key health_data_ibfk_1: " + e.getMessage());
-        }
-
-        try {
-            PreparedStatement stmt = connection.prepareStatement("ALTER TABLE health_data ADD CONSTRAINT health_data_user_fk FOREIGN KEY (user_id) REFERENCES sys_user(id)");
-            stmt.execute();
-            System.out.println("Added health_data_user_fk constraint referencing sys_user");
-        } catch (SQLException e) {
-            System.out.println("Cannot add foreign key health_data_user_fk: " + e.getMessage());
-        }
-
-        try {
-            PreparedStatement stmt = connection.prepareStatement("ALTER TABLE emergency_call DROP FOREIGN KEY emergency_call_ibfk_1");
-            stmt.execute();
-            System.out.println("Dropped emergency_call_ibfk_1 constraint");
-        } catch (SQLException e) {
-            System.out.println("Cannot drop foreign key emergency_call_ibfk_1: " + e.getMessage());
-        }
-
-        try {
-            PreparedStatement stmt = connection.prepareStatement("ALTER TABLE emergency_call ADD CONSTRAINT emergency_call_user_fk FOREIGN KEY (user_id) REFERENCES sys_user(id)");
-            stmt.execute();
-            System.out.println("Added emergency_call_user_fk constraint referencing sys_user");
-        } catch (SQLException e) {
-            System.out.println("Cannot add foreign key emergency_call_user_fk: " + e.getMessage());
-        }
-
-        try {
-            PreparedStatement stmt = connection.prepareStatement("ALTER TABLE service_order DROP FOREIGN KEY service_order_ibfk_1");
-            stmt.execute();
-            System.out.println("Dropped service_order_ibfk_1 constraint");
-        } catch (SQLException e) {
-            System.out.println("Cannot drop foreign key service_order_ibfk_1: " + e.getMessage());
-        }
-
-        try {
-            PreparedStatement stmt = connection.prepareStatement("ALTER TABLE service_order ADD CONSTRAINT service_order_user_fk FOREIGN KEY (user_id) REFERENCES sys_user(id)");
-            stmt.execute();
-            System.out.println("Added service_order_user_fk constraint referencing sys_user");
-        } catch (SQLException e) {
-            System.out.println("Cannot add foreign key service_order_user_fk: " + e.getMessage());
-        }
-    }
-
-    private void fixDeviceTable(Connection connection) throws SQLException {
-        try {
-            PreparedStatement stmt = connection.prepareStatement("ALTER TABLE device ADD COLUMN device_value DOUBLE");
-            stmt.execute();
-            System.out.println("Added device_value column to device table");
-        } catch (SQLException e) {
-            if (!e.getMessage().contains("Duplicate column name")) {
-                throw e;
+    
+    private void fixDeviceTable(Connection connection) throws Exception {
+        String[][] updates = {
+            {"客厅灯光", "客厅", "dev-001"},
+            {"卧室空调", "卧室", "dev-002"},
+            {"窗帘控制器", "客厅", "dev-003"},
+            {"主卧灯光", "主卧", "dev-004"},
+            {"厨房空调", "厨房", "dev-005"},
+            {"客厅灯光", "客厅", "test-dev-001"},
+            {"客厅空调", "客厅", "unique-dev-001"}
+        };
+        
+        try (PreparedStatement pstmt = connection.prepareStatement(
+            "UPDATE device SET device_name = ?, location = ? WHERE device_id = ?")) {
+            for (String[] update : updates) {
+                pstmt.setString(1, update[0]);
+                pstmt.setString(2, update[1]);
+                pstmt.setString(3, update[2]);
+                pstmt.executeUpdate();
             }
-            System.out.println("device_value column already exists");
+            System.out.println("Fixed device table");
         }
-
-        try {
-            PreparedStatement stmt = connection.prepareStatement("ALTER TABLE device ADD COLUMN location VARCHAR(100)");
-            stmt.execute();
-            System.out.println("Added location column to device table");
-        } catch (SQLException e) {
-            if (!e.getMessage().contains("Duplicate column name")) {
-                throw e;
+    }
+    
+    private void fixEmergencyCallTable(Connection connection) throws Exception {
+        String[][] updates = {
+            {"医疗", "已完成", "突发心脏病，需要紧急救治", "29"},
+            {"安全", "处理中", "家中漏水，需要帮助", "30"},
+            {"医疗", "已解决", "紧急呼叫测试", "31"},
+            {"医疗", "已解决", "紧急呼叫测试", "32"},
+            {"火灾", "已取消", "火灾报警测试", "33"}
+        };
+        
+        try (PreparedStatement pstmt = connection.prepareStatement(
+            "UPDATE emergency_call SET call_type = ?, status = ?, description = ? WHERE id = ?")) {
+            for (String[] update : updates) {
+                pstmt.setString(1, update[0]);
+                pstmt.setString(2, update[1]);
+                pstmt.setString(3, update[2]);
+                pstmt.setString(4, update[3]);
+                pstmt.executeUpdate();
             }
-            System.out.println("location column already exists");
+            System.out.println("Fixed emergency_call table");
         }
-
-        try {
-            PreparedStatement stmt = connection.prepareStatement("ALTER TABLE device ADD COLUMN last_online_time TIMESTAMP");
-            stmt.execute();
-            System.out.println("Added last_online_time column to device table");
-        } catch (SQLException e) {
-            if (!e.getMessage().contains("Duplicate column name")) {
-                throw e;
+    }
+    
+    private void fixServiceOrderTable(Connection connection) throws Exception {
+        String[][] updates = {
+            {"已完成", "幸福社区1号楼101室", "ORD20260606001"},
+            {"待服务", "幸福社区1号楼101室", "ORD20260610002"}
+        };
+        
+        try (PreparedStatement pstmt = connection.prepareStatement(
+            "UPDATE service_order SET status = ?, address = ? WHERE order_no = ?")) {
+            for (String[] update : updates) {
+                pstmt.setString(1, update[0]);
+                pstmt.setString(2, update[1]);
+                pstmt.setString(3, update[2]);
+                pstmt.executeUpdate();
             }
-            System.out.println("last_online_time column already exists");
+            System.out.println("Fixed service_order table");
         }
-
-        try {
-            PreparedStatement stmt = connection.prepareStatement("ALTER TABLE device ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP");
-            stmt.execute();
-            System.out.println("Added updated_at column to device table");
-        } catch (SQLException e) {
-            if (!e.getMessage().contains("Duplicate column name")) {
-                throw e;
+    }
+    
+    private void fixMessageTable(Connection connection) throws Exception {
+        String[][] updates = {
+            {"爸爸，今天天气不错，记得出门散步", "1"},
+            {"好的，我下午出去", "2"},
+            {"记得带伞，可能会下雨", "3"},
+            {"你好，下周周三下午两点有社区活动", "4"},
+            {"爸妈，今天晚上我回家吃饭", "5"},
+            {"好的，我们准备晚饭", "6"},
+            {"周末有空一起去公园吗", "7"},
+            {"可以啊，周六上午怎么样", "8"},
+            {"好的，周六见", "9"},
+            {"我们出门了", "11"},
+            {"我到家了", "12"},
+            {"明天有空来家里坐坐吗", "13"},
+            {"好的，明天下午三点", "14"},
+            {"记得带些水果", "15"},
+            {"好的，知道了", "16"},
+            {"周末去看电影吗", "17"},
+            {"好的，想看什么电影", "18"},
+            {"最近有部新上映的不错", "19"},
+            {"那我们周六去看", "20"},
+            {"社区通知：明天上午九点在活动中心开会", "31"},
+            {"收到，准时参加", "32"},
+            {"今天感觉身体怎么样", "33"},
+            {"挺好的，谢谢关心", "34"},
+            {"记得按时吃药", "35"},
+            {"好的，我会记得的", "36"},
+            {"明天社区有义诊活动", "37"},
+            {"太好了，我要去看看", "38"},
+            {"家里的药快用完了", "39"},
+            {"我帮你去药店买", "40"},
+            {"谢谢女儿", "41"},
+            {"不用客气", "42"},
+            {"今天做了什么好吃的", "43"},
+            {"做了你爱吃的红烧肉", "44"},
+            {"太棒了", "45"},
+            {"晚上早点回家", "46"},
+            {"好的", "47"},
+            {"天气变凉了，多穿点衣服", "48"},
+            {"知道了", "49"},
+            {"周末一起去超市采购", "50"},
+            {"好主意", "51"}
+        };
+        
+        try (PreparedStatement pstmt = connection.prepareStatement(
+            "UPDATE message SET content = ? WHERE id = ?")) {
+            for (String[] update : updates) {
+                pstmt.setString(1, update[0]);
+                pstmt.setString(2, update[1]);
+                pstmt.executeUpdate();
             }
-            System.out.println("updated_at column already exists");
+            System.out.println("Fixed message table");
+        }
+    }
+    
+    private void fillDeviceControlTable(Connection connection) throws Exception {
+        try (Statement stmt = connection.createStatement()) {
+            ResultSet rs = stmt.executeQuery("SELECT COUNT(*) FROM device_control");
+            if (rs.next() && rs.getInt(1) == 0) {
+                ResultSet deviceRs = stmt.executeQuery("SELECT id, device_type FROM device LIMIT 5");
+                while (deviceRs.next()) {
+                    long deviceId = deviceRs.getLong("id");
+                    String deviceType = deviceRs.getString("device_type");
+                    String controlValue = "light".equals(deviceType) ? "on" : "26";
+                    
+                    try (PreparedStatement pstmt = connection.prepareStatement(
+                        "INSERT INTO device_control (device_id, control_type, control_value, status, created_at) VALUES (?, ?, ?, ?, NOW())")) {
+                        pstmt.setLong(1, deviceId);
+                        pstmt.setString(2, deviceType);
+                        pstmt.setString(3, controlValue);
+                        pstmt.setString(4, "active");
+                        pstmt.executeUpdate();
+                    }
+                }
+                System.out.println("Filled device_control table");
+            }
+        }
+    }
+    
+    private void fillWalletTable(Connection connection) throws Exception {
+        try (Statement stmt = connection.createStatement()) {
+            ResultSet rs = stmt.executeQuery("SELECT COUNT(*) FROM wallet");
+            if (rs.next() && rs.getInt(1) == 0) {
+                String[][] inserts = {
+                    {"2", "500.00"},
+                    {"3", "800.00"},
+                    {"14", "1200.00"},
+                    {"15", "300.00"}
+                };
+                
+                try (PreparedStatement pstmt = connection.prepareStatement(
+                    "INSERT INTO wallet (user_id, balance, created_at, updated_at) VALUES (?, ?, NOW(), NOW())")) {
+                    for (String[] insert : inserts) {
+                        pstmt.setString(1, insert[0]);
+                        pstmt.setString(2, insert[1]);
+                        pstmt.executeUpdate();
+                    }
+                    System.out.println("Filled wallet table");
+                }
+            }
         }
     }
 
-    private void insertTestData(Connection connection) throws SQLException {
-        insertDevices(connection);
-        insertHealthData(connection);
-        insertEmergencyCalls(connection);
-        insertCommunityServices(connection);
-        insertServiceOrders(connection);
+    private boolean isDataInitialized(Connection connection) throws Exception {
+        try (Statement stmt = connection.createStatement()) {
+            ResultSet rs = stmt.executeQuery("SELECT COUNT(*) FROM sys_user WHERE username = 'admin'");
+            if (rs.next() && rs.getInt(1) > 0) {
+                return true;
+            }
+        } catch (Exception e) {
+            return false;
+        }
+        return false;
     }
 
-    private void insertDevices(Connection connection) throws SQLException {
-        PreparedStatement checkStmt = connection.prepareStatement("SELECT COUNT(*) FROM device");
-        ResultSet rs = checkStmt.executeQuery();
-        rs.next();
-        int count = rs.getInt(1);
-        if (count == 0) {
-            String sql = "INSERT INTO device (user_id, device_name, device_type, device_id, status, device_value, location, last_online_time, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), NOW())";
-            PreparedStatement stmt = connection.prepareStatement(sql);
-
-            stmt.setLong(1, 2);
-            stmt.setString(2, "Living Room Light");
-            stmt.setString(3, "light");
-            stmt.setString(4, "dev-001");
-            stmt.setString(5, "online");
-            stmt.setDouble(6, 100);
-            stmt.setString(7, "Living Room");
-            stmt.executeUpdate();
-
-            stmt.setLong(1, 2);
-            stmt.setString(2, "Bedroom AC");
-            stmt.setString(3, "aircon");
-            stmt.setString(4, "dev-002");
-            stmt.setString(5, "online");
-            stmt.setDouble(6, 26);
-            stmt.setString(7, "Bedroom");
-            stmt.executeUpdate();
-
-            stmt.setLong(1, 2);
-            stmt.setString(2, "Curtain Controller");
-            stmt.setString(3, "curtain");
-            stmt.setString(4, "dev-003");
-            stmt.setString(5, "online");
-            stmt.setDouble(6, 50);
-            stmt.setString(7, "Living Room");
-            stmt.executeUpdate();
-
-            stmt.setLong(1, 3);
-            stmt.setString(2, "Master Bedroom Light");
-            stmt.setString(3, "light");
-            stmt.setString(4, "dev-004");
-            stmt.setString(5, "online");
-            stmt.setDouble(6, 70);
-            stmt.setString(7, "Master Bedroom");
-            stmt.executeUpdate();
-
-            stmt.setLong(1, 3);
-            stmt.setString(2, "Kitchen AC");
-            stmt.setString(3, "aircon");
-            stmt.setString(4, "dev-005");
-            stmt.setString(5, "offline");
-            stmt.setDouble(6, 24);
-            stmt.setString(7, "Kitchen");
-            stmt.executeUpdate();
-
-            System.out.println("Inserted 5 device records");
-        } else {
-            System.out.println("device table already has data, skipping insertion");
+    private void executeSqlScript(String scriptName, Connection connection) {
+        try (InputStream is = getClass().getResourceAsStream("/" + scriptName);
+             BufferedReader reader = new BufferedReader(new InputStreamReader(is, "UTF-8"))) {
+            
+            StringBuilder sql = new StringBuilder();
+            String line;
+            
+            while ((line = reader.readLine()) != null) {
+                line = line.trim();
+                if (line.isEmpty() || line.startsWith("--")) {
+                    continue;
+                }
+                sql.append(line);
+                if (line.endsWith(";")) {
+                    try (Statement stmt = connection.createStatement()) {
+                        stmt.execute(sql.toString());
+                        System.out.println("Executed SQL: " + sql.substring(0, Math.min(sql.length(), 100)) + "...");
+                    } catch (Exception e) {
+                        System.out.println("SQL execution error: " + e.getMessage());
+                    }
+                    sql = new StringBuilder();
+                }
+            }
+            System.out.println("Successfully executed SQL script: " + scriptName);
+            
+        } catch (Exception e) {
+            System.out.println("Error executing SQL script: " + e.getMessage());
+            e.printStackTrace();
         }
     }
-
-    private void insertHealthData(Connection connection) throws SQLException {
-        PreparedStatement checkStmt = connection.prepareStatement("SELECT COUNT(*) FROM health_data");
-        ResultSet rs = checkStmt.executeQuery();
-        rs.next();
-        int count = rs.getInt(1);
-        if (count == 0) {
-            String sql = "INSERT INTO health_data (user_id, heart_rate, blood_pressure_high, blood_pressure_low, blood_sugar, body_temperature, measured_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())";
-            PreparedStatement stmt = connection.prepareStatement(sql);
-
-            stmt.setLong(1, 2);
-            stmt.setInt(2, 72);
-            stmt.setDouble(3, 125);
-            stmt.setDouble(4, 80);
-            stmt.setDouble(5, 5.8);
-            stmt.setDouble(6, 36.5);
-            stmt.setString(7, "2026-06-08 08:00:00");
-            stmt.executeUpdate();
-
-            stmt.setLong(1, 2);
-            stmt.setInt(2, 75);
-            stmt.setDouble(3, 130);
-            stmt.setDouble(4, 85);
-            stmt.setDouble(5, 6.2);
-            stmt.setDouble(6, 36.3);
-            stmt.setString(7, "2026-06-09 08:30:00");
-            stmt.executeUpdate();
-
-            stmt.setLong(1, 3);
-            stmt.setInt(2, 68);
-            stmt.setDouble(3, 118);
-            stmt.setDouble(4, 78);
-            stmt.setDouble(5, 5.5);
-            stmt.setDouble(6, 36.6);
-            stmt.setString(7, "2026-06-08 09:00:00");
-            stmt.executeUpdate();
-
-            stmt.setLong(1, 3);
-            stmt.setInt(2, 70);
-            stmt.setDouble(3, 122);
-            stmt.setDouble(4, 82);
-            stmt.setDouble(5, 5.9);
-            stmt.setDouble(6, 36.4);
-            stmt.setString(7, "2026-06-09 09:30:00");
-            stmt.executeUpdate();
-
-            System.out.println("Inserted 4 health_data records");
-        } else {
-            System.out.println("health_data table already has data, skipping insertion");
+    
+    private void insertInitialData(Connection connection) {
+        try {
+            insertServices(connection);
+            insertActivities(connection);
+            System.out.println("Successfully inserted initial data");
+        } catch (Exception e) {
+            System.out.println("Error inserting initial data: " + e.getMessage());
+            e.printStackTrace();
         }
     }
-
-    private void insertEmergencyCalls(Connection connection) throws SQLException {
-        PreparedStatement checkStmt = connection.prepareStatement("SELECT COUNT(*) FROM emergency_call");
-        ResultSet rs = checkStmt.executeQuery();
-        rs.next();
-        int count = rs.getInt(1);
-        if (count == 0) {
-            String sql = "INSERT INTO emergency_call (user_id, call_type, status, description, call_time, created_at) VALUES (?, ?, ?, ?, ?, ?)";
-            PreparedStatement stmt = connection.prepareStatement(sql);
-
-            stmt.setLong(1, 2);
-            stmt.setString(2, "medical");
-            stmt.setString(3, "completed");
-            stmt.setString(4, "Heart attack, need emergency");
-            stmt.setString(5, "2026-06-05 14:25:00");
-            stmt.setString(6, "2026-06-05 14:25:00");
-            stmt.executeUpdate();
-
-            stmt.setLong(1, 3);
-            stmt.setString(2, "security");
-            stmt.setString(3, "processing");
-            stmt.setString(4, "Water leak at home, need help");
-            stmt.setString(5, "2026-06-10 10:00:00");
-            stmt.setString(6, "2026-06-10 10:00:00");
-            stmt.executeUpdate();
-
-            System.out.println("Inserted 2 emergency_call records");
-        } else {
-            System.out.println("emergency_call table already has data, skipping insertion");
+    
+    private void insertServices(Connection connection) throws Exception {
+        String[] serviceNames = {"家政服务", "医疗服务", "生活服务", "餐饮服务", "美容服务"};
+        String[] serviceTypes = {"housekeeping", "medical", "life", "food", "beauty"};
+        String[] descriptions = {
+            "为社区居民提供上门家政服务，包括保洁、做饭、洗衣等",
+            "为社区居民提供医疗服务，包括体检、问诊、康复等",
+            "日常生活便利服务，包括代购、送水、送餐等",
+            "为老年人提供营养餐饮服务",
+            "为社区居民提供美容服务"
+        };
+        String[] providers = {"阳光家政服务中心", "社区医院", "社区服务中心", "社区食堂", "社区美容院"};
+        double[] prices = {80.0, 150.0, 20.0, 30.0, 50.0};
+        String[] phones = {"13812345678", "13887654321", "13811112222", "13833334444", "13855556666"};
+        
+        try (PreparedStatement pstmt = connection.prepareStatement(
+            "INSERT INTO community_service (service_name, service_type, description, price, provider, phone, status, sort_order, created_at, updated_at) " +
+            "VALUES (?, ?, ?, ?, ?, ?, 'active', ?, NOW(), NOW())")) {
+            
+            for (int i = 0; i < serviceNames.length; i++) {
+                pstmt.setString(1, serviceNames[i]);
+                pstmt.setString(2, serviceTypes[i]);
+                pstmt.setString(3, descriptions[i]);
+                pstmt.setDouble(4, prices[i]);
+                pstmt.setString(5, providers[i]);
+                pstmt.setString(6, phones[i]);
+                pstmt.setInt(7, i + 1);
+                pstmt.addBatch();
+            }
+            pstmt.executeBatch();
         }
     }
-
-    private void insertCommunityServices(Connection connection) throws SQLException {
-        PreparedStatement checkStmt = connection.prepareStatement("SELECT COUNT(*) FROM community_service");
-        ResultSet rs = checkStmt.executeQuery();
-        rs.next();
-        int count = rs.getInt(1);
-        if (count == 0) {
-            String sql = "INSERT INTO community_service (service_name, service_type, description, price, provider, phone, status, sort_order, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())";
-            PreparedStatement stmt = connection.prepareStatement(sql);
-
-            stmt.setString(1, "Housekeeping");
-            stmt.setString(2, "housekeeping");
-            stmt.setString(3, "Professional cleaning service");
-            stmt.setDouble(4, 80);
-            stmt.setString(5, "Sunshine Cleaning");
-            stmt.setString(6, "13812345678");
-            stmt.setString(7, "active");
-            stmt.setInt(8, 1);
-            stmt.executeUpdate();
-
-            stmt.setString(1, "Medical Care");
-            stmt.setString(2, "medical");
-            stmt.setString(3, "Professional medical service");
-            stmt.setDouble(4, 150);
-            stmt.setString(5, "Community Hospital");
-            stmt.setString(6, "13887654321");
-            stmt.setString(7, "active");
-            stmt.setInt(8, 2);
-            stmt.executeUpdate();
-
-            stmt.setString(1, "Delivery");
-            stmt.setString(2, "life");
-            stmt.setString(3, "Daily supplies delivery");
-            stmt.setDouble(4, 20);
-            stmt.setString(5, "Community Delivery");
-            stmt.setString(6, "13811112222");
-            stmt.setString(7, "active");
-            stmt.setInt(8, 3);
-            stmt.executeUpdate();
-
-            stmt.setString(1, "Cultural Activities");
-            stmt.setString(2, "culture");
-            stmt.setString(3, "Cultural activities");
-            stmt.setDouble(4, 50);
-            stmt.setString(5, "Community Center");
-            stmt.setString(6, "13833334444");
-            stmt.setString(7, "active");
-            stmt.setInt(8, 4);
-            stmt.executeUpdate();
-
-            System.out.println("Inserted 4 community_service records");
-        } else {
-            System.out.println("community_service table already has data, skipping insertion");
-        }
-    }
-
-    private void insertServiceOrders(Connection connection) throws SQLException {
-        PreparedStatement checkStmt = connection.prepareStatement("SELECT COUNT(*) FROM service_order");
-        ResultSet rs = checkStmt.executeQuery();
-        rs.next();
-        int count = rs.getInt(1);
-        if (count == 0) {
-            String sql = "INSERT INTO service_order (order_no, user_id, service_id, status, service_time, address, amount, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
-            PreparedStatement stmt = connection.prepareStatement(sql);
-
-            stmt.setString(1, "ORD20260606001");
-            stmt.setLong(2, 2);
-            stmt.setLong(3, 1);
-            stmt.setString(4, "completed");
-            stmt.setString(5, "2026-06-07 09:00:00");
-            stmt.setString(6, "Community 1 Building 101");
-            stmt.setDouble(7, 80);
-            stmt.setString(8, "2026-06-06 14:00:00");
-            stmt.setString(9, "2026-06-06 14:00:00");
-            stmt.executeUpdate();
-
-            stmt.setString(1, "ORD20260610002");
-            stmt.setLong(2, 2);
-            stmt.setLong(3, 2);
-            stmt.setString(4, "pending");
-            stmt.setString(5, "2026-06-11 10:00:00");
-            stmt.setString(6, "Community 1 Building 101");
-            stmt.setDouble(7, 150);
-            stmt.setString(8, "2026-06-10 09:00:00");
-            stmt.setString(9, "2026-06-10 09:00:00");
-            stmt.executeUpdate();
-
-            System.out.println("Inserted 2 service_order records");
-        } else {
-            System.out.println("service_order table already has data, skipping insertion");
+    
+    private void insertActivities(Connection connection) throws Exception {
+        String[] titles = {"书法艺术交流", "广场舞健身活动", "智能手机使用培训", "健康养生讲座", "社区生日聚会"};
+        String[] descriptions = {
+            "邀请社区书法爱好者一起交流书法技艺，互学互鉴，共同提高书法水平",
+            "每天早晨的广场舞健身活动，强健体魄，陶冶情操",
+            "帮助老年人学习智能手机的使用，包括微信使用、视频通话、健康监测",
+            "邀请专业医生讲解老年人健康养生知识，解答健康疑问",
+            "为当月过生日的居民举办生日聚会，共度欢乐时光"
+        };
+        String[] types = {"culture", "sports", "study", "health", "social"};
+        String[] locations = {"社区活动中心三楼", "社区广场", "社区活动中心二楼", "社区活动中心三楼大厅", "社区活动中心"};
+        String[] startTimes = {"2026-06-20 09:00:00", "2026-06-18 07:00:00", "2026-06-22 14:00:00", "2026-06-28 14:30:00", "2026-06-25 10:00:00"};
+        String[] endTimes = {"2026-06-20 11:30:00", "2026-06-18 09:00:00", "2026-06-22 16:00:00", "2026-06-28 16:30:00", "2026-06-25 12:00:00"};
+        int[] maxParticipants = {20, 50, 30, 80, 40};
+        int[] currentParticipants = {15, 42, 28, 66, 31};
+        String[] organizers = {"书画社", "健身管理办公室", "社区志愿者", "社区服务中心", "社区管理办公室"};
+        
+        try (PreparedStatement pstmt = connection.prepareStatement(
+            "INSERT INTO activity (title, description, type, location, start_time, end_time, max_participants, current_participants, organizer, status, created_at) " +
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', NOW())")) {
+            
+            for (int i = 0; i < titles.length; i++) {
+                pstmt.setString(1, titles[i]);
+                pstmt.setString(2, descriptions[i]);
+                pstmt.setString(3, types[i]);
+                pstmt.setString(4, locations[i]);
+                pstmt.setString(5, startTimes[i]);
+                pstmt.setString(6, endTimes[i]);
+                pstmt.setInt(7, maxParticipants[i]);
+                pstmt.setInt(8, currentParticipants[i]);
+                pstmt.setString(9, organizers[i]);
+                pstmt.addBatch();
+            }
+            pstmt.executeBatch();
         }
     }
 }

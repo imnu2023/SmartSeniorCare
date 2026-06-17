@@ -1,6 +1,12 @@
 <template>
   <div class="devices-page">
     <div class="page-header">
+      <button class="back-btn" @click="goBack">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M19 12H5m0 0l7-7m-7 7l7 7"/>
+        </svg>
+        <span>返回</span>
+      </button>
       <div class="header-content">
         <h1>智能家居控制中心</h1>
         <p>管理您的智能设备，打造智慧生活</p>
@@ -216,8 +222,15 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { deviceAPI } from '../api'
 import { ElMessage } from 'element-plus'
+
+const router = useRouter()
+
+const goBack = () => {
+  router.push('/dashboard')
+}
 
 const deviceList = ref([])
 const showAddModal = ref(false)
@@ -359,6 +372,33 @@ onMounted(() => {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 32px;
+  gap: 20px;
+}
+
+.back-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 16px;
+  background: white;
+  border: 2px solid #e2e8f0;
+  border-radius: 10px;
+  cursor: pointer;
+  color: #64748b;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.3s;
+}
+
+.back-btn:hover {
+  background: #f8fafc;
+  border-color: #667eea;
+  color: #667eea;
+}
+
+.back-btn svg {
+  width: 18px;
+  height: 18px;
 }
 
 .header-content h1 {

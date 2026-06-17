@@ -1,6 +1,12 @@
 <template>
   <div class="health-input-page">
     <div class="page-header">
+      <button class="back-btn" @click="goBack">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M19 12H5m0 0l7-7m-7 7l7 7"/>
+        </svg>
+        <span>返回</span>
+      </button>
       <div class="header-text">
         <h1>健康数据录入</h1>
         <p>记录您的每日健康数据</p>
@@ -124,8 +130,15 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { healthAPI } from '../api'
 import { ElMessage } from 'element-plus'
+
+const router = useRouter()
+
+const goBack = () => {
+  router.push('/dashboard')
+}
 
 const currentDate = new Date().toLocaleDateString('zh-CN', { 
   year: 'numeric', 
@@ -282,6 +295,35 @@ onMounted(() => {
 
 .page-header {
   margin-bottom: 28px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.back-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 16px;
+  background: white;
+  border: 2px solid #e2e8f0;
+  border-radius: 10px;
+  cursor: pointer;
+  color: #64748b;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.3s;
+}
+
+.back-btn:hover {
+  background: #f8fafc;
+  border-color: #667eea;
+  color: #667eea;
+}
+
+.back-btn svg {
+  width: 18px;
+  height: 18px;
 }
 
 .header-text h1 {

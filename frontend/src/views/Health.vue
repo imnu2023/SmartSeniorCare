@@ -2,6 +2,12 @@
   <div class="health-page">
     <div class="page-header">
       <div class="header-content">
+        <button class="back-btn" @click="goBack">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M19 12H5m0 0l7-7m-7 7l7 7"/>
+          </svg>
+          <span>返回</span>
+        </button>
         <div class="header-text">
           <h1>健康监测</h1>
           <p>实时追踪您的健康数据</p>
@@ -47,38 +53,6 @@
     <div class="charts-section">
       <div class="chart-card">
         <div class="card-header">
-          <h3>健康趋势</h3>
-          <div class="chart-tabs">
-            <button 
-              v-for="tab in timeTabs" 
-              :key="tab.value"
-              :class="['tab-btn', { active: activeTimeTab === tab.value }]"
-              @click="activeTimeTab = tab.value"
-            >
-              {{ tab.label }}
-            </button>
-          </div>
-        </div>
-        <div class="chart-container">
-          <div class="mini-chart">
-            <div 
-              v-for="(bar, index) in chartData" 
-              :key="index"
-              class="chart-bar-wrapper"
-            >
-              <div 
-                class="chart-bar" 
-                :style="{ height: bar.height + '%' }"
-                :class="bar.type"
-              ></div>
-              <span class="chart-label">{{ bar.label }}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="chart-card">
-        <div class="card-header">
           <h3>健康评分</h3>
         </div>
         <div class="health-score">
@@ -108,17 +82,49 @@
             </div>
           </div>
           <div class="score-details">
-            <div class="detail-item">
-              <span class="detail-icon">❤️</span>
-              <span class="detail-text">心率正常</span>
+            <div 
+              v-for="(detail, index) in healthDetails" 
+              :key="index" 
+              class="detail-item"
+            >
+              <span class="detail-icon">{{ detail.icon }}</span>
+              <span class="detail-text">{{ detail.text }}</span>
             </div>
-            <div class="detail-item">
-              <span class="detail-icon">💪</span>
-              <span class="detail-text">血压稳定</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="chart-card health-tips-card">
+        <div class="card-header">
+          <h3>健康建议</h3>
+        </div>
+        <div class="tips-container">
+          <div class="tip-card">
+            <div class="tip-icon">🏃</div>
+            <div class="tip-content">
+              <h4>运动建议</h4>
+              <p>每日建议运动30分钟，可选择散步、太极等温和运动</p>
             </div>
-            <div class="detail-item">
-              <span class="detail-icon">😴</span>
-              <span class="detail-text">睡眠充足</span>
+          </div>
+          <div class="tip-card">
+            <div class="tip-icon">🥗</div>
+            <div class="tip-content">
+              <h4>饮食建议</h4>
+              <p>低盐低脂饮食，多吃蔬菜水果，保持营养均衡</p>
+            </div>
+          </div>
+          <div class="tip-card">
+            <div class="tip-icon">💧</div>
+            <div class="tip-content">
+              <h4>饮水提醒</h4>
+              <p>每日建议饮用8杯水，约1.5-2升</p>
+            </div>
+          </div>
+          <div class="tip-card">
+            <div class="tip-icon">😴</div>
+            <div class="tip-content">
+              <h4>睡眠建议</h4>
+              <p>保证每晚7-9小时睡眠，保持规律作息</p>
             </div>
           </div>
         </div>
@@ -160,15 +166,203 @@
         </div>
       </div>
     </div>
+
+    <div class="upload-section">
+      <div class="upload-card">
+        <div class="card-header">
+          <h3>上传健康报告</h3>
+          <span class="upload-tip">支持 JPG、PNG、PDF 格式，单个文件不超过 10MB</span>
+        </div>
+        
+        <div class="upload-area" @click="selectFiles" @dragover.prevent @drop.prevent="handleDrop">
+          <input 
+            ref="fileInput" 
+            type="file" 
+            multiple 
+            accept="image/jpeg,image/png,application/pdf" 
+            @change="handleFileSelect"
+            class="file-input"
+          />
+          <div class="upload-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="17 8 12 3 7 8"/>
+              <line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+          </div>
+          <p>点击或拖拽文件到此处上传</p>
+        </div>
+
+        <div v-if="uploadedFiles.length > 0" class="files-list">
+          <div 
+            v-for="(file, index) in uploadedFiles" 
+            :key="index"
+            class="file-item"
+          >
+            <div class="file-preview">
+              <img v-if="file.type.startsWith('image')" :src="file.preview" alt="预览"/>
+              <div v-else class="file-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                  <line x1="16" y1="13" x2="8" y2="13"/>
+                  <line x1="16" y1="17" x2="8" y2="17"/>
+                  <polyline points="10 9 9 9 8 9"/>
+                </svg>
+              </div>
+            </div>
+            <div class="file-info">
+              <span class="file-name">{{ file.name }}</span>
+              <span class="file-size">{{ formatFileSize(file.size) }}</span>
+            </div>
+            <div class="file-status" :class="file.status">
+              <span v-if="file.status === 'uploading'">上传中...</span>
+              <span v-else-if="file.status === 'success'">上传成功</span>
+              <span v-else-if="file.status === 'error'">上传失败</span>
+              <span v-else>待上传</span>
+            </div>
+            <button class="delete-btn" @click="removeFile(index)" v-if="file.status !== 'uploading'">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="3 6 5 6 21 6"/>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <div v-if="uploadedFiles.length > 0" class="upload-actions">
+          <button class="upload-all-btn" @click="uploadAllFiles" :disabled="isUploading">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="17 8 12 3 7 8"/>
+              <line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+            {{ isUploading ? '上传中...' : '上传全部' }}
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { healthAPI } from '../api'
 import { ElMessage } from 'element-plus'
+import axios from 'axios'
+
+const router = useRouter()
+
+const goBack = () => {
+  router.push('/dashboard')
+}
 
 const latestData = ref(null)
+const fileInput = ref(null)
+const uploadedFiles = ref([])
+const isUploading = ref(false)
+
+const selectFiles = () => {
+  fileInput.value?.click()
+}
+
+const handleFileSelect = (event) => {
+  const files = Array.from(event.target.files)
+  addFiles(files)
+  event.target.value = ''
+}
+
+const handleDrop = (event) => {
+  const files = Array.from(event.dataTransfer.files)
+  addFiles(files)
+}
+
+const addFiles = (files) => {
+  files.forEach(file => {
+    if (file.size > 10 * 1024 * 1024) {
+      ElMessage.error(`${file.name} 超过 10MB 限制`)
+      return
+    }
+    
+    const fileItem = {
+      file,
+      name: file.name,
+      size: file.size,
+      type: file.type,
+      status: 'pending',
+      preview: file.type.startsWith('image') ? URL.createObjectURL(file) : null,
+      url: ''
+    }
+    
+    uploadedFiles.value.push(fileItem)
+  })
+}
+
+const removeFile = (index) => {
+  const file = uploadedFiles.value[index]
+  if (file.preview) {
+    URL.revokeObjectURL(file.preview)
+  }
+  uploadedFiles.value.splice(index, 1)
+}
+
+const formatFileSize = (bytes) => {
+  if (bytes < 1024) return bytes + ' B'
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
+}
+
+const uploadFile = async (fileItem) => {
+  try {
+    fileItem.status = 'uploading'
+    
+    const formData = new FormData()
+    formData.append('file', fileItem.file)
+    
+    const response = await axios.post('/api/upload/health-report', formData)
+    
+    if (response.data && response.data.code === 200) {
+      fileItem.status = 'success'
+      fileItem.url = response.data.data
+      return response.data.data
+    } else {
+      throw new Error(response.data.message || '上传失败')
+    }
+  } catch (error) {
+    console.error('上传失败:', error)
+    fileItem.status = 'error'
+    throw error
+  }
+}
+
+const uploadAllFiles = async () => {
+  isUploading.value = true
+  const pendingFiles = uploadedFiles.value.filter(f => f.status === 'pending')
+  
+  if (pendingFiles.length === 0) {
+    ElMessage.warning('没有待上传的文件')
+    isUploading.value = false
+    return
+  }
+  
+  try {
+    for (const fileItem of pendingFiles) {
+      await uploadFile(fileItem)
+    }
+    
+    const successCount = uploadedFiles.value.filter(f => f.status === 'success').length
+    if (successCount === pendingFiles.length) {
+      ElMessage.success('所有文件上传成功')
+    } else {
+      ElMessage.warning(`部分文件上传成功，共 ${successCount}/${pendingFiles.length}`)
+    }
+  } catch (error) {
+    ElMessage.error('部分文件上传失败')
+  } finally {
+    isUploading.value = false
+  }
+}
 const healthReport = ref('')
 const reportGenerated = ref(false)
 const reportDate = ref('')
@@ -181,20 +375,105 @@ const timeTabs = [
 ]
 
 const circumference = 2 * Math.PI * 50
-const healthScore = ref(85)
+
+const healthScore = computed(() => {
+  if (!latestData.value) return 75
+  
+  let score = 80
+  let factors = 0
+  
+  const heartRate = latestData.value.heartRate
+  if (heartRate) {
+    factors++
+    if (heartRate >= 60 && heartRate <= 100) {
+      score += 5
+    } else if (heartRate >= 50 && heartRate <= 110) {
+      score += 2
+    }
+  }
+  
+  const sys = latestData.value.bloodPressureHigh
+  const dia = latestData.value.bloodPressureLow
+  if (sys && dia) {
+    factors++
+    if (sys < 130 && dia < 80) {
+      score += 10
+    } else if (sys < 140 && dia < 90) {
+      score += 5
+    } else if (sys < 160 && dia < 100) {
+      score += 2
+    }
+  }
+  
+  const sugar = latestData.value.bloodSugar
+  if (sugar) {
+    factors++
+    if (sugar >= 3.9 && sugar <= 6.1) {
+      score += 10
+    } else if (sugar >= 3.5 && sugar <= 7.8) {
+      score += 5
+    } else if (sugar >= 3.0 && sugar <= 10.0) {
+      score += 2
+    }
+  }
+  
+  const sleep = latestData.value.sleepHours
+  if (sleep) {
+    factors++
+    if (sleep >= 7 && sleep <= 9) {
+      score += 5
+    } else if (sleep >= 6 && sleep <= 10) {
+      score += 3
+    }
+  }
+  
+  const finalScore = Math.min(100, score)
+  return factors > 0 ? finalScore : 75
+})
+
 const scoreOffset = computed(() => {
   return circumference - (healthScore.value / 100) * circumference
 })
 
-const chartData = ref([
-  { label: '周一', height: 75, type: 'normal' },
-  { label: '周二', height: 82, type: 'good' },
-  { label: '周三', height: 68, type: 'warning' },
-  { label: '周四', height: 88, type: 'good' },
-  { label: '周五', height: 79, type: 'normal' },
-  { label: '周六', height: 92, type: 'excellent' },
-  { label: '周日', height: 85, type: 'good' }
-])
+const healthDetails = computed(() => {
+  if (!latestData.value) return []
+  
+  const details = []
+  
+  const heartRate = latestData.value.heartRate
+  if (heartRate) {
+    if (heartRate >= 60 && heartRate <= 100) {
+      details.push({ icon: '❤️', text: '心率正常' })
+    } else {
+      details.push({ icon: '❤️', text: '心率异常' })
+    }
+  }
+  
+  const sys = latestData.value.bloodPressureHigh
+  const dia = latestData.value.bloodPressureLow
+  if (sys && dia) {
+    if (sys < 130 && dia < 80) {
+      details.push({ icon: '💪', text: '血压稳定' })
+    } else {
+      details.push({ icon: '💪', text: '血压偏高' })
+    }
+  }
+  
+  const sleep = latestData.value.sleepHours
+  if (sleep) {
+    if (sleep >= 7 && sleep <= 9) {
+      details.push({ icon: '😴', text: '睡眠充足' })
+    } else if (sleep >= 6 && sleep <= 10) {
+      details.push({ icon: '😴', text: '睡眠一般' })
+    } else {
+      details.push({ icon: '😴', text: '睡眠不足' })
+    }
+  }
+  
+  return details
+})
+
+
 
 const stats = computed(() => [
   {
@@ -303,6 +582,33 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 20px;
+}
+
+.back-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 16px;
+  background: white;
+  border: 2px solid #e2e8f0;
+  border-radius: 10px;
+  cursor: pointer;
+  color: #64748b;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.3s;
+}
+
+.back-btn:hover {
+  background: #f8fafc;
+  border-color: #667eea;
+  color: #667eea;
+}
+
+.back-btn svg {
+  width: 18px;
+  height: 18px;
 }
 
 .header-text h1 {
@@ -486,9 +792,61 @@ onMounted(() => {
   color: #ef4444;
 }
 
+.health-tips-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.tips-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1;
+}
+
+.tip-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px;
+  background: rgba(99, 102, 241, 0.04);
+  border-radius: 12px;
+  transition: all 0.3s ease;
+}
+
+.tip-card:hover {
+  background: rgba(99, 102, 241, 0.08);
+  transform: translateX(4px);
+}
+
+.tip-icon {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+.tip-content h4 {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1e293b;
+  margin-bottom: 4px;
+}
+
+.tip-content p {
+  font-size: 13px;
+  color: #64748b;
+  line-height: 1.5;
+}
+
 .charts-section {
   display: grid;
-  grid-template-columns: 2fr 1fr;
+  grid-template-columns: 1fr 1fr;
   gap: 20px;
   margin-bottom: 28px;
 }
@@ -747,6 +1105,219 @@ onMounted(() => {
   white-space: pre-wrap;
 }
 
+.upload-section {
+  margin-bottom: 28px;
+}
+
+.upload-card {
+  background: white;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.06);
+}
+
+.upload-tip {
+  font-size: 13px;
+  color: #94a3b8;
+}
+
+.upload-area {
+  border: 2px dashed #cbd5e1;
+  border-radius: 12px;
+  padding: 40px 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s;
+  margin-top: 16px;
+  background: #fafafa;
+}
+
+.upload-area:hover {
+  border-color: #667eea;
+  background: rgba(102, 126, 234, 0.05);
+}
+
+.upload-area.dragover {
+  border-color: #667eea;
+  background: rgba(102, 126, 234, 0.1);
+}
+
+.upload-icon {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.upload-icon svg {
+  width: 28px;
+  height: 28px;
+}
+
+.upload-area p {
+  margin: 0;
+  color: #64748b;
+  font-size: 14px;
+}
+
+.file-input {
+  display: none;
+}
+
+.files-list {
+  margin-top: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.file-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  background: #f8fafc;
+  border-radius: 12px;
+}
+
+.file-preview {
+  width: 60px;
+  height: 60px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.file-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.file-icon {
+  width: 32px;
+  height: 32px;
+  color: #667eea;
+}
+
+.file-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.file-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.file-name {
+  font-size: 14px;
+  color: #1e293b;
+  font-weight: 500;
+}
+
+.file-size {
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.file-status {
+  font-size: 12px;
+  font-weight: 500;
+  padding: 4px 12px;
+  border-radius: 20px;
+}
+
+.file-status.pending {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.file-status.uploading {
+  background: #dbeafe;
+  color: #2563eb;
+}
+
+.file-status.success {
+  background: #dcfce7;
+  color: #16a34a;
+}
+
+.file-status.error {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.delete-btn {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 8px;
+  background: #fee2e2;
+  color: #dc2626;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.delete-btn:hover {
+  background: #fecaca;
+}
+
+.delete-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.upload-actions {
+  margin-top: 20px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.upload-all-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  color: white;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.3s;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+}
+
+.upload-all-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+}
+
+.upload-all-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.upload-all-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
 @media (max-width: 768px) {
   .charts-section {
     grid-template-columns: 1fr;
@@ -760,6 +1331,15 @@ onMounted(() => {
     flex-direction: column;
     align-items: flex-start;
     gap: 16px;
+  }
+  
+  .file-item {
+    flex-wrap: wrap;
+  }
+  
+  .file-info {
+    flex: 1;
+    min-width: 200px;
   }
 }
 </style>

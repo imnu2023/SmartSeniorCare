@@ -18,45 +18,62 @@ const routes = [
   {
     path: '/dashboard',
     name: 'Dashboard',
-    component: () => import('../views/Dashboard.vue'),
-    redirect: '/dashboard/health',
-    children: [
-      {
-        path: 'health',
-        name: 'Health',
-        component: () => import('../views/Health.vue')
-      },
-      {
-        path: 'health-input',
-        name: 'HealthInput',
-        component: () => import('../views/HealthInput.vue')
-      },
-      {
-        path: 'devices',
-        name: 'Devices',
-        component: () => import('../views/Devices.vue')
-      },
-      {
-        path: 'emergency',
-        name: 'Emergency',
-        component: () => import('../views/Emergency.vue')
-      },
-      {
-        path: 'services',
-        name: 'Services',
-        component: () => import('../views/Services.vue')
-      },
-      {
-        path: 'orders',
-        name: 'Orders',
-        component: () => import('../views/Orders.vue')
-      },
-      {
-        path: 'profile',
-        name: 'Profile',
-        component: () => import('../views/Profile.vue')
-      }
-    ]
+    component: () => import('../views/Dashboard.vue')
+  },
+  {
+    path: '/health',
+    name: 'Health',
+    component: () => import('../views/Health.vue')
+  },
+  {
+    path: '/health-input',
+    name: 'HealthInput',
+    component: () => import('../views/HealthInput.vue')
+  },
+  {
+    path: '/devices',
+    name: 'Devices',
+    component: () => import('../views/Devices.vue')
+  },
+  {
+    path: '/emergency',
+    name: 'Emergency',
+    component: () => import('../views/Emergency.vue')
+  },
+  {
+    path: '/services',
+    name: 'Services',
+    component: () => import('../views/Services.vue')
+  },
+  {
+    path: '/orders',
+    name: 'Orders',
+    component: () => import('../views/Orders.vue')
+  },
+  {
+    path: '/profile',
+    name: 'Profile',
+    component: () => import('../views/Profile.vue')
+  },
+  {
+    path: '/messages',
+    name: 'Messages',
+    component: () => import('../views/Messages.vue')
+  },
+  {
+    path: '/activities',
+    name: 'Activities',
+    component: () => import('../views/Activities.vue')
+  },
+  {
+    path: '/elder-messages',
+    name: 'ElderMessages',
+    component: () => import('../views/ElderMessages.vue')
+  },
+  {
+    path: '/family-pay',
+    name: 'FamilyPay',
+    component: () => import('../views/FamilyPay.vue')
   },
   {
     path: '/admin',

@@ -2,6 +2,7 @@ package com.example.smartcommunity.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.example.smartcommunity.entity.CommunityService;
+import org.apache.ibatis.annotations.Delete;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Select;
 
@@ -15,4 +16,7 @@ public interface CommunityServiceMapper extends BaseMapper<CommunityService> {
 
     @Select("SELECT * FROM community_service WHERE status = 'active'")
     List<CommunityService> findAllActive();
+    
+    @Delete("DELETE FROM community_service WHERE id > 3")
+    void deleteDuplicateServices();
 }

@@ -88,12 +88,63 @@ public class HealthDataServiceImpl implements HealthDataService {
         
         double avgSleep = data.stream().filter(d -> d.getSleepHours() != null)
                 .mapToInt(HealthData::getSleepHours).average().orElse(0);
-        report.append("平均睡眠时长：").append(String.format("%.1f", avgSleep)).append(" 小时\n\n");
+        report.append("平均睡眠时长：").append(String.format("%.1f", avgSleep)).append(" 小时\n");
+        
+        double avgBloodSugar = data.stream().filter(d -> d.getBloodSugar() != null)
+                .mapToDouble(HealthData::getBloodSugar).average().orElse(0);
+        report.append("平均血糖：").append(String.format("%.1f", avgBloodSugar)).append(" mmol/L\n\n");
         
         report.append("【健康建议】\n");
-        if (avgHeartRate > 100) report.append("- 心率偏高，建议适当休息和放松\n");
-        if (avgSystolic > 130) report.append("- 血压偏高，建议低盐饮食\n");
-        if (avgSleep < 7) report.append("- 睡眠不足，建议保证充足睡眠\n");
+        boolean hasSpecificAdvice = false;
+        
+        if (avgHeartRate > 100) {
+            report.append("- 心率偏高，建议适当休息，避免剧烈运动，保持心情舒畅\n");
+            hasSpecificAdvice = true;
+        } else if (avgHeartRate < 60 && avgHeartRate > 0) {
+            report.append("- 心率偏低，建议适当进行轻度运动，如散步、太极拳等\n");
+            hasSpecificAdvice = true;
+        } else if (avgHeartRate > 0 && avgHeartRate >= 60 && avgHeartRate <= 100) {
+            report.append("- 心率处于正常范围，继续保持规律作息和适度运动\n");
+            hasSpecificAdvice = true;
+        }
+        
+        if (avgSystolic > 140 || avgDiastolic > 90) {
+            report.append("- 血压偏高，建议低盐饮食，减少油腻食物摄入，定期监测血压\n");
+            hasSpecificAdvice = true;
+        } else if (avgSystolic >= 120 && avgDiastolic >= 80) {
+            report.append("- 血压处于正常高值，建议注意饮食健康，适当运动\n");
+            hasSpecificAdvice = true;
+        } else if (avgSystolic > 0 && avgDiastolic > 0) {
+            report.append("- 血压控制良好，继续保持健康的生活方式\n");
+            hasSpecificAdvice = true;
+        }
+        
+        if (avgBloodSugar > 7.0) {
+            report.append("- 血糖偏高，建议控制糖分摄入，遵循医生建议规律服药\n");
+            hasSpecificAdvice = true;
+        } else if (avgBloodSugar >= 6.1 && avgBloodSugar <= 7.0) {
+            report.append("- 血糖处于临界值，建议注意饮食，定期复查\n");
+            hasSpecificAdvice = true;
+        } else if (avgBloodSugar > 0) {
+            report.append("- 血糖控制在理想范围，继续保持健康饮食\n");
+            hasSpecificAdvice = true;
+        }
+        
+        if (avgSleep < 6) {
+            report.append("- 睡眠不足，建议保证每晚7-8小时睡眠，睡前避免使用电子设备\n");
+            hasSpecificAdvice = true;
+        } else if (avgSleep >= 6 && avgSleep <= 9) {
+            report.append("- 睡眠时长充足，继续保持良好的睡眠习惯\n");
+            hasSpecificAdvice = true;
+        }
+        
+        if (!hasSpecificAdvice) {
+            report.append("- 建议定期监测健康数据，保持规律的生活作息\n");
+            report.append("- 适当进行户外活动，保持积极乐观的心态\n");
+            report.append("- 饮食均衡，多吃蔬菜水果，减少高盐高脂食物\n");
+        }
+        
+        report.append("\n【温馨提示】如有不适请及时就医");
         
         return report.toString();
     }

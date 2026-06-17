@@ -1,6 +1,12 @@
 <template>
   <div class="orders-page">
     <div class="page-header">
+      <button class="back-btn" @click="goBack">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M19 12H5m0 0l7-7m-7 7l7 7"/>
+        </svg>
+        <span>返回</span>
+      </button>
       <div class="header-text">
         <h1>我的订单</h1>
         <p>管理您的服务订单</p>
@@ -80,6 +86,27 @@
         
         <div class="card-footer">
           <div class="order-actions">
+            <button 
+              v-if="order.status === 'pending' && order.paymentStatus !== 'paid'" 
+              class="action-btn pay" 
+              @click.stop="openPayModal(order)"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="9" cy="9" r="7"/>
+                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+              </svg>
+              立即支付
+            </button>
+            <button 
+              v-if="order.status === 'pending' && order.paymentStatus === 'paid'" 
+              class="action-btn confirm" 
+              @click.stop="confirmPayment(order)"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+              确认付款
+            </button>
             <button 
               v-if="order.status === 'pending'" 
               class="action-btn cancel" 
@@ -237,13 +264,70 @@
         </div>
       </div>
     </div>
+
+    <div v-if="showPayModal" class="modal-overlay" @click="closePayModal">
+      <div class="modal-content pay-modal" @click.stop>
+        <div class="modal-header">
+          <h3>订单支付</h3>
+          <button class="close-btn" @click="closePayModal">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"/>
+              <line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        </div>
+        <div v-if="orderToPay" class="modal-body">
+          <div class="wallet-info">
+            <div class="wallet-balance">
+              <span class="wallet-label">钱包余额</span>
+              <span class="wallet-value">¥{{ walletBalance }}</span>
+            </div>
+          </div>
+          <div class="pay-info">
+            <div class="pay-item">
+              <span class="pay-label">订单号</span>
+              <span class="pay-value">{{ orderToPay.orderNo }}</span>
+            </div>
+            <div class="pay-item">
+              <span class="pay-label">服务项目</span>
+              <span class="pay-value">{{ getServiceName(orderToPay.serviceId) }}</span>
+            </div>
+            <div class="pay-item">
+              <span class="pay-label">服务时间</span>
+              <span class="pay-value">{{ orderToPay.serviceTime }}</span>
+            </div>
+            <div class="pay-item total">
+              <span class="pay-label">应付金额</span>
+              <span class="pay-value">¥{{ orderToPay.amount }}</span>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-secondary" @click="closePayModal">取消</button>
+          <button class="btn-primary" :disabled="walletBalance < (orderToPay?.amount || 0)" @click="handlePay">
+            {{ walletBalance < (orderToPay?.amount || 0) ? '余额不足' : '确认支付' }}
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { orderAPI, serviceAPI } from '../api'
+import { orderAPI, serviceAPI, paymentAPI, walletAPI } from '../api'
 import { ElMessage } from 'element-plus'
+
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
+
+const goBack = () => {
+  router.push('/dashboard')
+}
+
+const currentRole = ref(localStorage.getItem('role') || '2')
+const currentUserId = ref(parseInt(localStorage.getItem('userId') || '1'))
 
 const tabs = [
   { label: '全部', value: 'all', icon: '📋', count: 0 },
@@ -258,10 +342,13 @@ const activeTab = ref('all')
 const showDetailModal = ref(false)
 const showReviewModal = ref(false)
 const showCancelConfirm = ref(false)
+const showPayModal = ref(false)
 const selectedOrder = ref(null)
 const orderToCancel = ref(null)
+const orderToPay = ref(null)
 const reviewRating = ref(5)
 const reviewComment = ref('')
+const walletBalance = ref(0)
 
 const pendingCount = computed(() => orderList.value.filter(o => o.status === 'pending').length)
 const completedCount = computed(() => orderList.value.filter(o => o.status === 'completed').length)
@@ -273,18 +360,22 @@ const filteredOrders = computed(() => {
 })
 
 const loadOrders = async () => {
-  const userId = localStorage.getItem('userId')
-  if (!userId) return
-  
   try {
-    const response = await orderAPI.getByUser(userId)
-    if (response.code === 200) {
-      orderList.value = response.data
-      updateTabCounts()
+    const response = await orderAPI.getByUser(currentUserId.value)
+    if (response && response.code === 200 && response.data) {
+      orderList.value = response.data.map(order => ({
+        ...order,
+        status: order.status || 'pending',
+        paymentStatus: order.paymentStatus || 'unpaid'
+      }))
+    } else {
+      orderList.value = []
     }
   } catch (error) {
-    ElMessage.error('加载订单失败')
+    console.error('加载订单失败:', error)
+    orderList.value = []
   }
+  updateTabCounts()
 }
 
 const loadServices = async () => {
@@ -416,6 +507,59 @@ const confirmCancel = async () => {
   orderToCancel.value = null
 }
 
+const openPayModal = async (order) => {
+  orderToPay.value = order
+  
+  try {
+    const userId = localStorage.getItem('userId')
+    const response = await walletAPI.getBalance(parseInt(userId))
+    if (response.code === 200) {
+      walletBalance.value = response.data.balance
+    }
+  } catch (error) {
+    walletBalance.value = 0
+  }
+  
+  showPayModal.value = true
+}
+
+const closePayModal = () => {
+  showPayModal.value = false
+  orderToPay.value = null
+}
+
+const handlePay = async () => {
+  if (!orderToPay.value) return
+  
+  try {
+    const userId = localStorage.getItem('userId')
+    const response = await paymentAPI.pay(orderToPay.value.id, parseInt(userId))
+    
+    if (response.code === 200) {
+      ElMessage.success('支付成功')
+      closePayModal()
+      loadOrders()
+    }
+  } catch (error) {
+    ElMessage.error('支付失败')
+  }
+}
+
+const confirmPayment = async (order) => {
+  try {
+    const response = await paymentAPI.confirm(order.id)
+    
+    if (response.code === 200) {
+      ElMessage.success('付款已确认')
+      loadOrders()
+    }
+  } catch (error) {
+    ElMessage.error('确认失败')
+  }
+}
+
+
+
 onMounted(() => {
   loadOrders()
   loadServices()
@@ -434,6 +578,33 @@ onMounted(() => {
   justify-content: space-between;
   align-items: flex-start;
   margin-bottom: 28px;
+  gap: 20px;
+}
+
+.back-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 16px;
+  background: white;
+  border: 2px solid #e2e8f0;
+  border-radius: 10px;
+  cursor: pointer;
+  color: #64748b;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.3s;
+}
+
+.back-btn:hover {
+  background: #f8fafc;
+  border-color: #667eea;
+  color: #667eea;
+}
+
+.back-btn svg {
+  width: 18px;
+  height: 18px;
 }
 
 .header-text h1 {

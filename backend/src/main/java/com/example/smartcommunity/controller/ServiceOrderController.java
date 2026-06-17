@@ -64,4 +64,10 @@ public class ServiceOrderController {
         serviceOrderService.cancelOrder(orderId);
         return ApiResponse.success("已取消");
     }
+    
+    @PostMapping("/fix-address")
+    public ApiResponse<String> fixAddress() {
+        serviceOrderService.fixAddressData();
+        return ApiResponse.success("地址数据修复完成");
+    }
 }

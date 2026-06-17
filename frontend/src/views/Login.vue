@@ -121,7 +121,7 @@ const handleLogin = async () => {
         if (response.data.role === 1) {
           window.location.href = '/admin/users'
         } else {
-          window.location.href = '/dashboard/health'
+          window.location.href = '/dashboard'
         }
       }, 500)
     } else {

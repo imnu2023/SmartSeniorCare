@@ -40,6 +40,8 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public ApiResponse<Void> handleException(Exception e) {
+        System.err.println("Exception caught: " + e.getMessage());
+        e.printStackTrace();
         return ApiResponse.error(e.getMessage());
     }
 }

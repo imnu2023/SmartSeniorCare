@@ -10,11 +10,13 @@ import com.example.smartcommunity.mapper.UserMapper;
 import com.example.smartcommunity.service.UserService;
 import com.example.smartcommunity.util.JwtUtil;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
 @Service
@@ -24,6 +26,7 @@ public class UserServiceImpl implements UserService {
     private final UserMapper userMapper;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
+    private final RedisTemplate<String, Object> redisTemplate;
     
     @Override
     public LoginResponse login(LoginRequest request) {
@@ -37,6 +40,9 @@ public class UserServiceImpl implements UserService {
             throw new BusinessException("密码错误");
         }
         String token = jwtUtil.generateToken(user.getId(), user.getUsername(), user.getRole());
+        
+        redisTemplate.opsForValue().set("user:" + user.getId(), user, 7200, TimeUnit.SECONDS);
+        
         return LoginResponse.builder()
                 .token(token)
                 .userId(user.getId())

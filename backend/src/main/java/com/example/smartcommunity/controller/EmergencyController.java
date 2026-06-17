@@ -61,6 +61,6 @@ public class EmergencyController {
     @PutMapping("/{callId}/cancel")
     public ApiResponse<Void> cancelCall(@PathVariable Long callId) {
         emergencyService.cancelCall(callId);
-        return ApiResponse.success("取消成功");
+        return ApiResponse.success("鍙栨秷鎴愬姛");
     }
 }

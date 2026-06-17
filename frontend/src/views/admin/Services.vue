@@ -150,7 +150,12 @@ const getServiceTypeName = (type) => {
     housekeeping: '家政服务',
     medical: '医疗护理',
     life: '生活服务',
-    culture: '文化娱乐'
+    culture: '文化娱乐',
+    beauty: '美容美发',
+    food: '餐饮服务',
+    health: '康复护理',
+    shopping: '代购服务',
+    companion: '陪伴服务'
   }
   return types[type] || type
 }

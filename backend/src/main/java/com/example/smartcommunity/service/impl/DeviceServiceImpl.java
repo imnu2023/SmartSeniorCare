@@ -27,9 +27,28 @@ public class DeviceServiceImpl implements DeviceService {
     
     @Override
     public Device updateDevice(Device device) {
-        device.setUpdatedAt(LocalDateTime.now());
-        deviceMapper.updateById(device);
-        return device;
+        Device existing = deviceMapper.selectById(device.getId());
+        if (existing != null) {
+            if (device.getDeviceName() != null) {
+                existing.setDeviceName(device.getDeviceName());
+            }
+            if (device.getDeviceType() != null) {
+                existing.setDeviceType(device.getDeviceType());
+            }
+            if (device.getLocation() != null) {
+                existing.setLocation(device.getLocation());
+            }
+            if (device.getStatus() != null) {
+                existing.setStatus(device.getStatus());
+            }
+            if (device.getDeviceValue() != null) {
+                existing.setDeviceValue(device.getDeviceValue());
+            }
+            existing.setUpdatedAt(LocalDateTime.now());
+            deviceMapper.updateById(existing);
+            return existing;
+        }
+        return null;
     }
     
     @Override

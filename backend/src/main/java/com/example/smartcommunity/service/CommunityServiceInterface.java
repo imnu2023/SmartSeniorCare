@@ -17,4 +17,12 @@ public interface CommunityServiceInterface {
     List<CommunityService> getServicesByType(String type);
     
     CommunityService getServiceById(Long id);
+    
+    void cleanDuplicateServices();
+    
+    void fixGarbledServices();
+    
+    void cleanAllGarbledData();
+    
+    void fixAllGarbledData();
 }
