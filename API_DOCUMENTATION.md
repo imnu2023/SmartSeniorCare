@@ -90,7 +90,7 @@ POST /api/auth/register
   "age": 65,
   "gender": "male",
   "address": "幸福社区1号楼",
-  "role": 3,
+  "role": 2,
   "emergencyContact": "张四",
   "emergencyPhone": "13800002222"
 }
@@ -918,14 +918,17 @@ POST /api/fix/all
 
 | 模块 | 方法 | 路径 | 说明 |
 |------|------|------|------|
+| Auth | GET | /api/auth/hash/{password} | 密码哈希(调试) |
 | Auth | POST | /api/auth/login | 登录 |
 | Auth | POST | /api/auth/register | 注册 |
 | User | GET | /api/users | 用户列表 |
 | User | GET/PUT/DELETE | /api/users/{id} | 用户CRUD |
 | Relation | POST | /api/relations/bind | 绑定亲属 |
+| Relation | DELETE | /api/relations/{id} | 解绑 |
 | Relation | GET | /api/relations/elder/{id} | 老人→家属 |
 | Relation | GET | /api/relations/family/{id} | 家属→老人 |
 | Relation | GET | /api/relations/exists | 判断关系 |
+| Relation | DELETE | /api/relations/clean-duplicates | 清理重复 |
 | Wallet | GET | /api/wallet/{userId} | 获取钱包 |
 | Wallet | GET | /api/wallet/balance/{userId} | 查询余额 |
 | Wallet | POST | /api/wallet/recharge | 充值 |
@@ -936,26 +939,43 @@ POST /api/fix/all
 | Payment | GET | /api/payments/orders/need-confirm | 待确认订单 |
 | Payment | GET | /api/payments/elder-orders/{familyId} | 家属关联老人订单 |
 | Service | GET/POST | /api/services | 服务列表/新增 |
-| Service | PUT/DELETE | /api/services/{id} | 服务修改/删除 |
+| Service | GET/PUT/DELETE | /api/services/{id} | 服务详情/修改/删除 |
 | Service | GET | /api/services/type/{type} | 按类型筛选 |
+| Service | DELETE | /api/services/clean | 清理重复 |
+| Service | POST | /api/services/fix-garbled | 修复乱码 |
+| Service | DELETE | /api/services/clean-all | 清理全部 |
+| Service | POST | /api/services/fix-all-garbled | 修复全部乱码 |
 | Order | GET/POST | /api/orders | 订单列表/创建 |
+| Order | GET | /api/orders/{id} | 订单详情 |
 | Order | GET | /api/orders/user/{userId} | 用户订单 |
 | Order | GET | /api/orders/status/{status} | 按状态筛选 |
 | Order | PUT | /api/orders/{id}/status | 更新状态 |
 | Order | PUT | /api/orders/{id}/cancel | 取消订单 |
+| Order | POST | /api/orders/fix-address | 修复地址 |
 | Activity | GET/POST | /api/activities | 活动列表/创建 |
+| Activity | GET/PUT/DELETE | /api/activities/{id} | 活动详情/修改/删除 |
 | Activity | GET | /api/activities/active | 进行中活动 |
 | Activity | GET | /api/activities/upcoming | 即将开始 |
+| Activity | GET | /api/activities/type/{type} | 按类型筛选 |
+| Activity | GET | /api/activities/participant/{userId} | 用户报名的活动 |
 | Activity | POST | /api/activities/{id}/register | 报名 |
 | Activity | DELETE | /api/activities/{id}/register | 取消报名 |
+| Activity | GET | /api/activities/{id}/participants | 参与者列表 |
+| Activity | GET | /api/activities/{id}/participant/{userId} | 判断已报名 |
 | Emergency | POST | /api/emergency/call | 发起呼叫 |
+| Emergency | GET | /api/emergency/{id} | 呼叫详情 |
+| Emergency | GET | /api/emergency/user/{userId} | 用户呼叫记录 |
 | Emergency | GET | /api/emergency/unresolved | 未解决呼叫 |
 | Emergency | PUT | /api/emergency/{id}/respond | 响应 |
 | Emergency | PUT | /api/emergency/{id}/resolve | 解决 |
+| Emergency | PUT | /api/emergency/{id}/cancel | 取消 |
+| Health | GET | /api/health | 健康检查 |
 | Health | POST | /api/health | 保存数据 |
-| Health | GET | /api/health/weekly/{userId} | 周报 |
+| Health | GET | /api/health/weekly/{userId} | 近7天数据 |
+| Health | GET | /api/health/warning/{userId} | 告警数据 |
 | Health | GET | /api/health/latest/{userId} | 最新数据 |
 | Health | GET | /api/health/analyze/{userId} | 分析报告 |
+| Health | POST | /api/health/report/{userId} | 生成报告 |
 | Message | GET | /api/messages/{userId} | 用户所有通知 |
 | Message | GET | /api/messages/unread/{userId} | 未读通知 |
 | Message | GET | /api/messages/unread/count/{userId} | 未读计数 |
@@ -963,7 +983,12 @@ POST /api/fix/all
 | Message | PUT | /api/messages/read-all/{userId} | 全部已读 |
 | Message | DELETE | /api/messages/{id} | 删除通知 |
 | Device | GET/POST | /api/devices | 设备列表/添加 |
+| Device | GET/PUT/DELETE | /api/devices/{id} | 设备详情/修改/删除 |
 | Device | GET | /api/devices/user/{userId} | 用户设备 |
 | Device | POST | /api/devices/{id}/control | 控制设备 |
 | Upload | POST | /api/upload/avatar | 上传头像 |
 | Upload | POST | /api/upload/health-report | 上传报告 |
+| Upload | POST | /api/upload/health-reports | 批量上传报告 |
+| Fix | POST | /api/fix/orders | 修复订单乱码 |
+| Fix | POST | /api/fix/devices | 修复设备乱码 |
+| Fix | POST | /api/fix/all | 修复全部 |
